@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +17,8 @@ from notifier.telegram import send_brief
 
 
 def main() -> dict:
-    run_date = datetime.now().strftime("%Y%m%d")
+    eastern = ZoneInfo("America/New_York")
+    run_date = datetime.now(eastern).strftime("%Y%m%d")
     print(f"\n{'='*50}")
     print(f"  MacroLens Daily Brief — {run_date}")
     print(f"{'='*50}\n")

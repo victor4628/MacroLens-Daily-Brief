@@ -158,7 +158,7 @@ def format_report(state: dict, llm) -> str:
 
 ---
 
-## 📋 Macro Data Releases — Yesterday
+## 📋 Macro Data Releases — Today
 
 {macro_table}
 

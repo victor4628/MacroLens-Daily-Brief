@@ -64,15 +64,17 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
                         "surprise": None, "country": "", "date": ""}]
         return placeholder, []
 
-    today = datetime.now()
-    yesterday = today - timedelta(days=1)
-    week_out = today + timedelta(days=7)
+    from zoneinfo import ZoneInfo
+    eastern = ZoneInfo("America/New_York")
+    today = datetime.now(eastern)
+    tomorrow = today + timedelta(days=1)
+    week_out = today + timedelta(days=8)
 
     try:
         resp = requests.get(
             "https://finnhub.io/api/v1/calendar/economic",
             params={
-                "from": yesterday.strftime("%Y-%m-%d"),
+                "from": today.strftime("%Y-%m-%d"),
                 "to": week_out.strftime("%Y-%m-%d"),
                 "token": api_key,
             },
@@ -89,8 +91,8 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
     upcoming: list[dict] = []
     seen_upcoming: set[str] = set()
 
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
     today_str = today.strftime("%Y-%m-%d")
+    tomorrow_str = tomorrow.strftime("%Y-%m-%d")
 
     for ev in events:
         event_date = (ev.get("time") or "")[:10]
@@ -105,7 +107,7 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
         if not _matches(event_name, COUNTRY_FILTERS[country]):
             continue
 
-        if event_date == yesterday_str:
+        if event_date == today_str:
             actual = ev.get("actual")
             if actual is None:
                 continue          # only show released data
@@ -129,7 +131,7 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
                 "date": event_date,
             })
 
-        elif event_date >= today_str:
+        elif event_date >= tomorrow_str:
             importance = (ev.get("impact") or "").lower()
             if importance not in ("high", "medium"):
                 continue
@@ -152,7 +154,7 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
     upcoming.sort(key=lambda x: (x["date"], country_order.get(x["country"].lower(), 9)))
 
     if not releases:
-        releases = [{"event": "No major macro releases yesterday", "country": "",
+        releases = [{"event": "No major macro releases today", "country": "",
                      "actual": None, "forecast": None, "previous": None,
                      "surprise": None, "date": yesterday_str}]
 
