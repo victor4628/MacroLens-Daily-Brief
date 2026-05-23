@@ -1,0 +1,21 @@
+# secrets
+.env
+
+# generated reports (tracked individually via git Actions)
+outputs/*.md
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
