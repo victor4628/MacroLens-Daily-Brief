@@ -20,10 +20,10 @@ def _rank_headlines(news: list[dict], llm) -> list[dict]:
     )
 
     prompt = (
-        "You are a senior macro analyst. From the headlines below, select the 5 most "
+        "You are a senior macro analyst. From the headlines below, select the 10 most "
         "important for macro markets (equities, bonds, crypto, FX, commodities). "
         "Return ONLY a JSON array of the selected headline numbers in order of importance, "
-        "most important first. Example: [3, 12, 7, 25, 1]\n\n"
+        "most important first. Example: [3, 12, 7, 25, 1, 8, 14, 6, 19, 2]\n\n"
         f"{numbered}"
     )
 
@@ -36,13 +36,13 @@ def _rank_headlines(news: list[dict], llm) -> list[dict]:
             return valid[:5]
         indices = json.loads(match.group())
         ranked = []
-        for idx in indices[:5]:
+        for idx in indices[:10]:
             if 1 <= idx <= len(valid):
                 ranked.append(valid[idx - 1])
-        return ranked if ranked else valid[:5]
+        return ranked if ranked else valid
     except Exception as e:
         print(f"[news ranking] fallback to recency: {e}")
-        return valid[:5]
+        return valid
 
 
 def format_report(state: dict, llm) -> str:
@@ -109,12 +109,12 @@ def format_report(state: dict, llm) -> str:
     top_headlines = _rank_headlines(news, llm)
     if top_headlines:
         headline_lines = "\n".join(
-            f"- **{n['headline']}**  \n  *{n['source']} — {n['datetime']}*"
-            for n in top_headlines
+            f"{i+1}. **{n['headline']}**  \n   *{n['source']} — {n['datetime']}*"
+            for i, n in enumerate(top_headlines)
         )
-        news_section = f"## 📰 Top Headlines\n\n{headline_lines}"
+        news_section = f"## Top Headlines\n\n{headline_lines}"
     else:
-        news_section = "## 📰 Top Headlines\n\n_No headlines available._"
+        news_section = "## Top Headlines\n\n_No headlines available._"
 
     # ── 4. Anomalies ──────────────────────────────────────────────────────────
     if anomalies:
@@ -201,14 +201,14 @@ def format_report(state: dict, llm) -> str:
 
 ---
 
+{news_section}
+
+---
+
 ## 📊 Market Snapshot
 
 {snapshot_table}
 {indicators_block}
-
----
-
-{news_section}
 
 ---
 
