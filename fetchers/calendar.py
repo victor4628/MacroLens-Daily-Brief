@@ -156,6 +156,6 @@ def fetch_macro_calendar() -> tuple[list[dict], list[dict]]:
     if not releases:
         releases = [{"event": "No major macro releases today", "country": "",
                      "actual": None, "forecast": None, "previous": None,
-                     "surprise": None, "date": yesterday_str}]
+                     "surprise": None, "date": today_str}]
 
     return releases, upcoming[:30]
