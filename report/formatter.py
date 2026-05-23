@@ -1,13 +1,50 @@
 from datetime import datetime
 import re
+import json
 
 
-def _trim_to_sentences(text: str, max_sentences: int = 5) -> str:
-    """Trim text to at most max_sentences sentences."""
-    if not text:
-        return ""
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return " ".join(sentences[:max_sentences])
+def _summarize_articles(headlines: list[dict], article_texts: dict[str, str], llm) -> list[str]:
+    """
+    Batch-summarize all top headlines in one LLM call.
+    Uses full article text when available, falls back to Finnhub summary.
+    Returns a list of summaries in the same order as headlines.
+    """
+    articles_block = ""
+    for i, n in enumerate(headlines):
+        url = n.get("url", "")
+        full_text = article_texts.get(url, "")
+        content = full_text if full_text else n.get("summary", "")
+        if content:
+            articles_block += f"\n\n[{i+1}] {n['headline']}\n{content[:2500]}"
+
+    if not articles_block:
+        return [""] * len(headlines)
+
+    prompt = (
+        "You are a financial analyst. Summarize each article below in 5 sentences or fewer. "
+        "Focus only on market-relevant facts: asset prices, economic data, policy decisions, "
+        "earnings, or geopolitical events that move markets. Be concise and specific.\n\n"
+        "Return a JSON array of strings, one summary per article, in the same order.\n"
+        f"Example for 3 articles: [\"Summary 1.\", \"Summary 2.\", \"Summary 3.\"]\n"
+        f"{articles_block}"
+    )
+
+    try:
+        response = llm.invoke(prompt).content.strip()
+        match = re.search(r'\[.*?\]', response, re.DOTALL)
+        if match:
+            summaries = json.loads(match.group())
+            if isinstance(summaries, list) and len(summaries) == len(headlines):
+                return [str(s) for s in summaries]
+    except Exception as e:
+        print(f"[summarize] LLM failed, using Finnhub summaries: {e}")
+
+    # Fallback: use first 3 sentences of Finnhub summary
+    def _trim(text: str) -> str:
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        return " ".join(sentences[:3])
+
+    return [_trim(n.get("summary", "")) for n in headlines]
 
 
 def _rank_headlines(news: list[dict], llm) -> list[dict]:
@@ -117,10 +154,18 @@ def format_report(state: dict, llm) -> str:
     # ── 3. Top Headlines (LLM-ranked) ────────────────────────────────────────
     top_headlines = _rank_headlines(news, llm)
     if top_headlines:
+        # Concurrently fetch full article text, fall back to Finnhub summary
+        from fetchers.scraper import fetch_articles_concurrent
+        article_texts = fetch_articles_concurrent(top_headlines)
+
+        # Batch LLM summarization (one call for all articles)
+        summaries = _summarize_articles(top_headlines, article_texts, llm)
+
         headline_blocks = []
-        for i, n in enumerate(top_headlines):
-            summary = _trim_to_sentences(n.get("summary", ""), max_sentences=5)
-            block = f"{i+1}. **{n['headline']}**  \n   *{n['source']} — {n['datetime']}*"
+        for i, (n, summary) in enumerate(zip(top_headlines, summaries)):
+            used_full = bool(article_texts.get(n.get("url", "")))
+            source_note = f"{n['source']} — {n['datetime']}"
+            block = f"{i+1}. **{n['headline']}**  \n   *{source_note}*"
             if summary:
                 block += f"  \n   {summary}"
             headline_blocks.append(block)

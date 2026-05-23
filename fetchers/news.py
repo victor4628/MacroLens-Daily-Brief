@@ -37,6 +37,7 @@ def fetch_financial_news() -> list[dict]:
             "summary": item.get("summary", "")[:600],
             "source": item.get("source", ""),
             "datetime": dt.strftime("%Y-%m-%d %H:%M"),
+            "url": item.get("url", ""),
         })
 
     return news if news else [{"headline": "No news in the last 24 hours", "summary": "", "source": "", "datetime": ""}]
