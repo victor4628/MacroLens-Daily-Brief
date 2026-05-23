@@ -5,8 +5,9 @@ from datetime import datetime, timedelta
 
 def fetch_financial_news() -> list[dict]:
     """
-    Fetch top financial news from the last 24 hours via Finnhub.
-    Returns up to 10 items. Returns a placeholder if API key is missing.
+    Fetch all financial news from the last 24 hours via Finnhub.
+    Returns up to 100 items (all available). LLM will rank and select top 5.
+    Returns a placeholder if API key is missing.
     """
     api_key = os.getenv("FINNHUB_API_KEY", "")
     if not api_key:
@@ -37,7 +38,7 @@ def fetch_financial_news() -> list[dict]:
             "source": item.get("source", ""),
             "datetime": dt.strftime("%Y-%m-%d %H:%M"),
         })
-        if len(news) >= 10:
+        if len(news) >= 100:  # safety cap
             break
 
     return news if news else [{"headline": "No news in the last 24 hours", "summary": "", "source": "", "datetime": ""}]

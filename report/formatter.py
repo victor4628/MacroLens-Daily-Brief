@@ -1,6 +1,50 @@
 from datetime import datetime
 
 
+def _rank_headlines(news: list[dict], llm) -> list[dict]:
+    """
+    Use LLM to select and rank the 5 most market-moving headlines
+    from the full list of fetched news.
+    Returns a list of up to 5 news dicts in ranked order.
+    """
+    valid = [n for n in news if n.get("headline") and not n["headline"].startswith("[")]
+    if not valid:
+        return []
+    if len(valid) <= 5:
+        return valid
+
+    # Send all headlines (just the text, not summaries) to keep token count low
+    numbered = "\n".join(
+        f"{i+1}. {n['headline']} ({n['source']})"
+        for i, n in enumerate(valid)
+    )
+
+    prompt = (
+        "You are a senior macro analyst. From the headlines below, select the 5 most "
+        "important for macro markets (equities, bonds, crypto, FX, commodities). "
+        "Return ONLY a JSON array of the selected headline numbers in order of importance, "
+        "most important first. Example: [3, 12, 7, 25, 1]\n\n"
+        f"{numbered}"
+    )
+
+    try:
+        response = llm.invoke(prompt).content.strip()
+        # Extract the JSON array robustly
+        import re, json
+        match = re.search(r"\[[\d,\s]+\]", response)
+        if not match:
+            return valid[:5]
+        indices = json.loads(match.group())
+        ranked = []
+        for idx in indices[:5]:
+            if 1 <= idx <= len(valid):
+                ranked.append(valid[idx - 1])
+        return ranked if ranked else valid[:5]
+    except Exception as e:
+        print(f"[news ranking] fallback to recency: {e}")
+        return valid[:5]
+
+
 def format_report(state: dict, llm) -> str:
     run_date_raw = state.get("run_date", datetime.now().strftime("%Y%m%d"))
     try:
@@ -61,11 +105,12 @@ def format_report(state: dict, llm) -> str:
     else:
         indicators_section = ""
 
-    # ── 3. Top Headlines ──────────────────────────────────────────────────────
-    if news and not news[0]["headline"].startswith("["):
+    # ── 3. Top Headlines (LLM-ranked) ────────────────────────────────────────
+    top_headlines = _rank_headlines(news, llm)
+    if top_headlines:
         headline_lines = "\n".join(
             f"- **{n['headline']}**  \n  *{n['source']} — {n['datetime']}*"
-            for n in news[:5]
+            for n in top_headlines
         )
         news_section = f"## 📰 Top Headlines\n\n{headline_lines}"
     else:
@@ -138,7 +183,7 @@ def format_report(state: dict, llm) -> str:
         f"Hot sectors: {', '.join(hot) or 'none'}\n"
         f"Cold sectors to watch: {', '.join(cold) or 'none'}\n"
         f"Macro surprises: {', '.join(r.get('event','') for r in macro_releases if r.get('surprise') in ('beat','miss'))[:120] or 'none'}\n"
-        f"Top headline: {news[0]['headline'] if news else 'N/A'}"
+        f"Top headline: {top_headlines[0]['headline'] if top_headlines else (news[0]['headline'] if news else 'N/A')}"
     )
     try:
         conclusion = llm.invoke(
