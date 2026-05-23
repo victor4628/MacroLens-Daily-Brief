@@ -38,7 +38,6 @@ def format_report(state: dict, llm) -> str:
 
     # ── 2. Macro Indicators (FRED) ────────────────────────────────────────────
     if macro_indicators:
-        # Merge Fed Funds lower/upper into a single "X.XX% – X.XX%" row
         indicators_display = dict(macro_indicators)
         lower = indicators_display.pop("DFEDTARL", None)
         upper = indicators_display.pop("DFEDTARU", None)
@@ -62,7 +61,17 @@ def format_report(state: dict, llm) -> str:
     else:
         indicators_section = ""
 
-    # ── 3. Anomalies ─────────────────────────────────────────────────────────
+    # ── 3. Top Headlines ──────────────────────────────────────────────────────
+    if news and not news[0]["headline"].startswith("["):
+        headline_lines = "\n".join(
+            f"- **{n['headline']}**  \n  *{n['source']} — {n['datetime']}*"
+            for n in news[:5]
+        )
+        news_section = f"## 📰 Top Headlines\n\n{headline_lines}"
+    else:
+        news_section = "## 📰 Top Headlines\n\n_No headlines available._"
+
+    # ── 4. Anomalies ──────────────────────────────────────────────────────────
     if anomalies:
         analysis_map = {a["ticker"]: a for a in anomaly_analyses}
         anomaly_blocks: list[str] = []
@@ -76,9 +85,9 @@ def format_report(state: dict, llm) -> str:
             )
         anomaly_section = "## ⚠️ Major Anomalies\n\n" + "\n\n---\n\n".join(anomaly_blocks)
     else:
-        anomaly_section = "## ✅ No Major Anomalies\n\nNo assets moved more than ±2% yesterday."
+        anomaly_section = "## ✅ No Major Anomalies\n\nNo assets moved more than ±2% today."
 
-    # ── 4. Macro Releases ─────────────────────────────────────────────────────
+    # ── 5. Macro Releases ─────────────────────────────────────────────────────
     if macro_releases and macro_releases[0].get("event", "").startswith("["):
         macro_table = f"_{macro_releases[0]['event']}_"
     elif macro_releases:
@@ -96,9 +105,9 @@ def format_report(state: dict, llm) -> str:
             + "\n".join(rows)
         )
     else:
-        macro_table = "_No major macro releases yesterday._"
+        macro_table = "_No major macro releases today._"
 
-    # ── 5. Economic Calendar ──────────────────────────────────────────────────
+    # ── 6. Economic Calendar ──────────────────────────────────────────────────
     if calendar_events:
         cal_rows = "\n".join(
             f"| {e.get('date','—')} | {e.get('event','—')} | {e.get('country','—')} | {e.get('importance','—')} |"
@@ -112,7 +121,7 @@ def format_report(state: dict, llm) -> str:
     else:
         calendar_table = "_No upcoming macro events in the next 7 days._"
 
-    # ── 6. Sector Heat ────────────────────────────────────────────────────────
+    # ── 7. Sector Heat ────────────────────────────────────────────────────────
     hot = sector_analysis.get("hot_sectors", [])
     hot_reasons = sector_analysis.get("hot_reasons", [])
     cold = sector_analysis.get("cold_but_watching", [])
@@ -122,7 +131,7 @@ def format_report(state: dict, llm) -> str:
     hot_lines = "\n".join(f"- **{s}** — {r}" for s, r in zip(hot, hot_reasons)) or "_None identified._"
     cold_lines = "\n".join(f"- **{s}** — {r}" for s, r in zip(cold, cold_reasons)) or "_None flagged._"
 
-    # ── 7. Daily Conclusion (LLM) ─────────────────────────────────────────────
+    # ── 8. Daily Conclusion (LLM) ─────────────────────────────────────────────
     context = (
         f"Date: {run_date_display}\n"
         f"Anomalies ({len(anomalies)} assets ≥ ±2%): {', '.join(a['ticker'] for a in anomalies) or 'none'}\n"
@@ -154,6 +163,10 @@ def format_report(state: dict, llm) -> str:
 
 ---
 
+{news_section}
+
+---
+
 {anomaly_section}
 
 ---
@@ -171,6 +184,8 @@ def format_report(state: dict, llm) -> str:
 ---
 
 ## 🔥 Sector Heat Map
+
+<!-- HEATMAP_PLACEHOLDER -->
 
 ### Hot Now
 {hot_lines}

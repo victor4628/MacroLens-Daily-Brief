@@ -124,9 +124,11 @@ em {
 """
 
 
-def markdown_to_pdf(md_text: str, output_path: str) -> bool:
+def markdown_to_pdf(md_text: str, output_path: str,
+                    sector_performance: list[dict] | None = None) -> bool:
     """
     Convert a Markdown string to a styled PDF.
+    Optionally injects a sector heatmap image where <!-- HEATMAP_PLACEHOLDER --> appears.
     Returns True on success, False if WeasyPrint is unavailable.
     """
     try:
@@ -142,6 +144,23 @@ def markdown_to_pdf(md_text: str, output_path: str) -> bool:
             md_text,
             extensions=["tables", "fenced_code", "nl2br"],
         )
+
+        # Inject heatmap where placeholder comment sits
+        if sector_performance:
+            from report.heatmap import generate_sector_heatmap
+            data_uri = generate_sector_heatmap(sector_performance)
+            if data_uri:
+                img_tag = (
+                    f'<div style="text-align:center; margin: 16px 0;">'
+                    f'<img src="{data_uri}" style="max-width:100%; border-radius:6px;">'
+                    f'</div>'
+                )
+                html_body = html_body.replace(
+                    "<!-- HEATMAP_PLACEHOLDER -->", img_tag
+                )
+
+        # Remove leftover placeholder if heatmap wasn't generated
+        html_body = html_body.replace("<!-- HEATMAP_PLACEHOLDER -->", "")
 
         full_html = f"""<!DOCTYPE html>
 <html lang="en">

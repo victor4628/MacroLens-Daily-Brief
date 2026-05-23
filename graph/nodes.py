@@ -179,6 +179,10 @@ def node_save_output(state: BriefState) -> dict:
     # Save PDF (gracefully skipped if WeasyPrint not available)
     from report.pdf_generator import markdown_to_pdf
     pdf_path = out_dir / f"brief_{run_date}.pdf"
-    markdown_to_pdf(state["report_markdown"], str(pdf_path))
+    markdown_to_pdf(
+        state["report_markdown"],
+        str(pdf_path),
+        sector_performance=state.get("sector_performance", []),
+    )
 
     return {"output_path": str(md_path)}
