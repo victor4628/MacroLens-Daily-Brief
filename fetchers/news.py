@@ -38,7 +38,5 @@ def fetch_financial_news() -> list[dict]:
             "source": item.get("source", ""),
             "datetime": dt.strftime("%Y-%m-%d %H:%M"),
         })
-        if len(news) >= 100:  # safety cap
-            break
 
     return news if news else [{"headline": "No news in the last 24 hours", "summary": "", "source": "", "datetime": ""}]
