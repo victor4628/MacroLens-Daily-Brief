@@ -41,6 +41,22 @@ jobs:
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
 
+      - name: Remove PDFs older than 60 days
+        run: |
+          python - <<'EOF'
+          from datetime import datetime, timedelta
+          from pathlib import Path
+          cutoff = datetime.now() - timedelta(days=60)
+          for f in Path("outputs").glob("brief_*.pdf"):
+              try:
+                  file_date = datetime.strptime(f.stem.replace("brief_", ""), "%Y%m%d")
+                  if file_date < cutoff:
+                      f.unlink()
+                      print(f"Deleted {f.name}")
+              except ValueError:
+                  pass
+          EOF
+
       - name: Commit generated report
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
