@@ -1,4 +1,13 @@
 from datetime import datetime
+import re
+
+
+def _trim_to_sentences(text: str, max_sentences: int = 5) -> str:
+    """Trim text to at most max_sentences sentences."""
+    if not text:
+        return ""
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    return " ".join(sentences[:max_sentences])
 
 
 def _rank_headlines(news: list[dict], llm) -> list[dict]:
@@ -108,11 +117,14 @@ def format_report(state: dict, llm) -> str:
     # ── 3. Top Headlines (LLM-ranked) ────────────────────────────────────────
     top_headlines = _rank_headlines(news, llm)
     if top_headlines:
-        headline_lines = "\n".join(
-            f"{i+1}. **{n['headline']}**  \n   *{n['source']} — {n['datetime']}*"
-            for i, n in enumerate(top_headlines)
-        )
-        news_section = f"## Top Headlines\n\n{headline_lines}"
+        headline_blocks = []
+        for i, n in enumerate(top_headlines):
+            summary = _trim_to_sentences(n.get("summary", ""), max_sentences=5)
+            block = f"{i+1}. **{n['headline']}**  \n   *{n['source']} — {n['datetime']}*"
+            if summary:
+                block += f"  \n   {summary}"
+            headline_blocks.append(block)
+        news_section = "## Top Headlines\n\n" + "\n\n".join(headline_blocks)
     else:
         news_section = "## Top Headlines\n\n_No headlines available._"
 

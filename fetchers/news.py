@@ -34,7 +34,7 @@ def fetch_financial_news() -> list[dict]:
             continue
         news.append({
             "headline": item.get("headline", ""),
-            "summary": item.get("summary", "")[:300],
+            "summary": item.get("summary", "")[:600],
             "source": item.get("source", ""),
             "datetime": dt.strftime("%Y-%m-%d %H:%M"),
         })
