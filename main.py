@@ -47,9 +47,12 @@ def main() -> dict:
     print(f"   Assets tracked:     {len(result.get('market_data', []))}\n")
 
     send_brief(
-        report_markdown=result["report_markdown"],
         output_path=result["output_path"],
         run_date=run_date,
+        anomalies=result.get("anomalies", []),
+        sector_analysis=result.get("sector_analysis", {}),
+        macro_indicators=result.get("macro_indicators", {}),
+        report_markdown=result["report_markdown"],
     )
 
     return result

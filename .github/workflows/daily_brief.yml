@@ -2,7 +2,7 @@ name: MacroLens Daily Brief
 
 on:
   schedule:
-    - cron: "0 22 * * 1-5"   # 17:00 EST (UTC-5) / 18:00 EDT (UTC-4) on weekdays
+    - cron: "0 21 * * 1-5"   # 17:00 EDT (UTC-4) / 16:00 EST (UTC-5) on weekdays
   workflow_dispatch:           # allow manual runs from GitHub UI
 
 permissions:
